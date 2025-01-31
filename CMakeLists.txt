@@ -25,6 +25,10 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} m)
+if (UNIX AND NOT APPLE)
+    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm)
+endif ()
+
 
 if (EMSCRIPTEN)
     execute_process(COMMAND emcc --cflags OUTPUT_VARIABLE EM_CFLAGS)

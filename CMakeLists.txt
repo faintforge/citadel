@@ -13,6 +13,7 @@ endforeach()
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
     C_STANDARD "99"
+    POSITION_INDEPENDENT_CODE true
     C_STANDARD_REQUIRED true
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
     COMPILE_FLAGS "-Wall -Wextra -Wno-builtin-macro-redefined"
@@ -26,7 +27,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} m)
 if (UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm)
+    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm EGL)
 endif ()
 
 

@@ -27,7 +27,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} m)
 if (UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm EGL)
+    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm X11 X11-xcb EGL)
 endif ()
 
 

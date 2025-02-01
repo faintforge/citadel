@@ -5,17 +5,29 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <xcb/xcb_icccm.h>
+#include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
+
+#include "../os_internal.h"
 
 cit_window* cit_window_create(SP_Ivec2 size, SP_Str title, b8 resizable) {
     cit_window* window = sp_arena_push_no_zero(os_state.arena, sizeof(cit_window));
     window->is_open = true;
 
+    i32 x11_screen = DefaultScreen(os_state.xdpy);
     const xcb_setup_t* setup = xcb_get_setup(os_state.conn);
-    xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
+    xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
+    xcb_screen_t* screen = NULL;
+    for (; iter.rem; x11_screen--, xcb_screen_next(&iter)) {
+        if (x11_screen == 0) {
+            screen = iter.data;
+        }
+    }
 
-    u32 mask = XCB_CW_EVENT_MASK;
+    u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     u32 values[] = {
-        0,
+        screen->black_pixel,
+        XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_EXPOSURE,
     };
     window->handle = xcb_generate_id(os_state.conn);
     xcb_create_window(
@@ -55,21 +67,10 @@ cit_window* cit_window_create(SP_Ivec2 size, SP_Str title, b8 resizable) {
     }
 
     // Destroy window event
-    xcb_intern_atom_cookie_t protocol_cookie = xcb_intern_atom(os_state.conn,
-            true,
-            12,
-            "WM_PROTOCOLS");
-    xcb_intern_atom_reply_t* protocol_reply = xcb_intern_atom_reply(os_state.conn,
-            protocol_cookie,
-            NULL);
-
-    xcb_intern_atom_cookie_t destroy_cookie = xcb_intern_atom(os_state.conn,
-            false,
-            16,
-            "WM_DELETE_WINDOW");
-    xcb_intern_atom_reply_t* destroy_reply = xcb_intern_atom_reply(os_state.conn,
-            destroy_cookie,
-            NULL);
+    xcb_intern_atom_cookie_t protocol_cookie = xcb_intern_atom(os_state.conn, true, 12, "WM_PROTOCOLS");
+    xcb_intern_atom_cookie_t destroy_cookie = xcb_intern_atom(os_state.conn, false, 16, "WM_DELETE_WINDOW");
+    xcb_intern_atom_reply_t* protocol_reply = xcb_intern_atom_reply(os_state.conn, protocol_cookie, NULL);
+    xcb_intern_atom_reply_t* destroy_reply = xcb_intern_atom_reply(os_state.conn, destroy_cookie, NULL);
     xcb_change_property(os_state.conn,
             XCB_PROP_MODE_REPLACE,
             window->handle,
@@ -86,6 +87,9 @@ cit_window* cit_window_create(SP_Ivec2 size, SP_Str title, b8 resizable) {
 
     window->next = os_state.window_stack;
     os_state.window_stack = window;
+
+    // TODO: REMOVE
+    cit_os_gfx_gl_interface.equip_window(window);
 
     return window;
 }

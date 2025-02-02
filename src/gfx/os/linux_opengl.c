@@ -1,14 +1,14 @@
 #include "spire.h"
-#include <xcb/xproto.h>
 #ifdef SP_OS_LINUX
 
 #include "../../cit_internal.h"
-#include "../../os/linux/internal.h"
+#include "../../os/linux_internal.h"
 
 #include <EGL/egl.h>
 #include <GL/gl.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
+#include <xcb/xproto.h>
 
 typedef struct cit_gfx_gl_state cit_gfx_gl_state;
 struct cit_gfx_gl_state {
@@ -21,15 +21,12 @@ static cit_gfx_gl_state gl_state = {0};
 
 typedef struct linux_gl_window linux_gl_window;
 struct linux_gl_window {
-    xcb_window_t handle;
-    xcb_atom_t destroy_atom;
-    b8 is_open;
     EGLSurface surface;
 };
 
 b8 cit_os_gl_init(cit_config config) {
-    EGLDisplay dpy = eglGetDisplay(os_state.xdpy);
-    // EGLDisplay dpy = eglGetPlatformDisplay(EGL_PLATFORM_XCB_EXT, os_state.conn, (const EGLAttrib[]) {
+    EGLDisplay dpy = eglGetDisplay(linux_state.xdpy);
+    // EGLDisplay dpy = eglGetPlatformDisplay(EGL_PLATFORM_XCB_EXT, linux_state.conn, (const EGLAttrib[]) {
     //         EGL_PLATFORM_XCB_SCREEN_EXT,
     //         0,
     //         EGL_NONE,
@@ -126,12 +123,20 @@ void cit_os_gl_terminate(void) {
 }
 
 cit_window* cit_os_gl_window_create(cit_window_desc desc) {
-    linux_gl_window* window = sp_arena_push_no_zero(os_state.arena, sizeof(linux_gl_window));
-    window->is_open = true;
+    cit_window* win = sp_arena_push_no_zero(_cit_state.arena, sizeof(cit_window));
+    linux_window* lwin = sp_arena_push_no_zero(_cit_state.arena, sizeof(linux_window));
+    linux_gl_window* lglwin = sp_arena_push_no_zero(_cit_state.arena, sizeof(linux_gl_window));
+    *lwin = (linux_window) {
+        .internal = lglwin,
+    };
+    *win = (cit_window) {
+        .internal = lwin,
+        .is_open = true,
+    };
 
     i32 visual_id;
     eglGetConfigAttrib(gl_state.dpy, gl_state.config, EGL_NATIVE_VISUAL_ID, &visual_id);
-    const xcb_setup_t* setup = xcb_get_setup(os_state.conn);
+    const xcb_setup_t* setup = xcb_get_setup(linux_state.conn);
     xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
 
     u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
@@ -139,11 +144,11 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
         screen->black_pixel,
         XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_EXPOSURE,
     };
-    window->handle = xcb_generate_id(os_state.conn);
+    lwin->handle = xcb_generate_id(linux_state.conn);
     xcb_create_window(
-            os_state.conn,
+            linux_state.conn,
             XCB_COPY_FROM_PARENT,
-            window->handle,
+            lwin->handle,
             screen->root,
             0, 0,
             desc.size.x, desc.size.y,
@@ -152,15 +157,13 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
             visual_id,
             mask, values);
 
-    // xcb_change_window_attributes(os_state.conn, window->handle, XCB_CW_COLORMAP, &colormap);
-
     // Set window properties
     // https://xcb.freedesktop.org/windowcontextandmanipulation/
 
     // Title
-    xcb_change_property(os_state.conn,
+    xcb_change_property(linux_state.conn,
             XCB_PROP_MODE_REPLACE,
-            window->handle,
+            lwin->handle,
             XCB_ATOM_WM_NAME,
             XCB_ATOM_STRING,
             8,
@@ -172,34 +175,34 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
         xcb_size_hints_t hints;
         xcb_icccm_size_hints_set_min_size(&hints, desc.size.x, desc.size.y);
         xcb_icccm_size_hints_set_max_size(&hints, desc.size.x, desc.size.y);
-        xcb_icccm_set_wm_size_hints(os_state.conn,
-                window->handle,
+        xcb_icccm_set_wm_size_hints(linux_state.conn,
+                lwin->handle,
                 XCB_ATOM_WM_NORMAL_HINTS,
                 &hints);
     }
 
     // Destroy window event
-    xcb_intern_atom_cookie_t protocol_cookie = xcb_intern_atom(os_state.conn, true, 12, "WM_PROTOCOLS");
-    xcb_intern_atom_cookie_t destroy_cookie = xcb_intern_atom(os_state.conn, false, 16, "WM_DELETE_WINDOW");
-    xcb_intern_atom_reply_t* protocol_reply = xcb_intern_atom_reply(os_state.conn, protocol_cookie, NULL);
-    xcb_intern_atom_reply_t* destroy_reply = xcb_intern_atom_reply(os_state.conn, destroy_cookie, NULL);
-    xcb_change_property(os_state.conn,
+    xcb_intern_atom_cookie_t protocol_cookie = xcb_intern_atom(linux_state.conn, true, 12, "WM_PROTOCOLS");
+    xcb_intern_atom_cookie_t destroy_cookie = xcb_intern_atom(linux_state.conn, false, 16, "WM_DELETE_WINDOW");
+    xcb_intern_atom_reply_t* protocol_reply = xcb_intern_atom_reply(linux_state.conn, protocol_cookie, NULL);
+    xcb_intern_atom_reply_t* destroy_reply = xcb_intern_atom_reply(linux_state.conn, destroy_cookie, NULL);
+    xcb_change_property(linux_state.conn,
             XCB_PROP_MODE_REPLACE,
-            window->handle,
+            lwin->handle,
             protocol_reply->atom,
             XCB_ATOM_ATOM,
             32,
             1,
             &destroy_reply->atom);
-    window->destroy_atom = destroy_reply->atom;
+    lwin->destroy_atom = destroy_reply->atom;
 
     // Show the window
-    xcb_map_window(os_state.conn, window->handle);
-    xcb_flush(os_state.conn);
+    xcb_map_window(linux_state.conn, lwin->handle);
+    xcb_flush(linux_state.conn);
 
     EGLSurface surface = eglCreateWindowSurface(gl_state.dpy,
         gl_state.config,
-        (EGLNativeWindowType) window->handle,
+        (EGLNativeWindowType) lwin->handle,
         (const i32[]) {
             // EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_SRGB,
             EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_LINEAR,
@@ -211,15 +214,21 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
         sp_error("Code: %llu", surface);
         return false;
     }
-    window->surface = surface;
+    lglwin->surface = surface;
 
-    return (cit_window*) window;
+    eglMakeCurrent(gl_state.dpy, surface, surface, gl_state.ctx);
+    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    // glClear(GL_COLOR_BUFFER_BIT);
+    // eglSwapBuffers(gl_state.dpy, surface);
+
+    return win;
 }
 
 void cit_os_gl_window_destroy(cit_window *window) {
-    linux_gl_window* _window = (linux_gl_window*) window;
-    xcb_destroy_window(os_state.conn, _window->handle);
-    eglDestroySurface(gl_state.dpy, _window->surface);
+    linux_window* lwin = window->internal;
+    linux_gl_window* lglwin = (linux_gl_window*) lwin->internal;
+    xcb_destroy_window(linux_state.conn, lwin->handle);
+    eglDestroySurface(gl_state.dpy, lglwin->surface);
 }
 
 #endif // SP_OS_LINUX

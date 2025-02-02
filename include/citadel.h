@@ -35,6 +35,7 @@ typedef struct cit_window cit_window;
 
 extern cit_window* cit_window_create(cit_window_desc desc);
 extern void        cit_window_destroy(cit_window* window);
+
 extern b8          cit_window_is_open(const cit_window* window);
 extern void        cit_poll_events(void);
 

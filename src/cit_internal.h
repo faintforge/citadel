@@ -5,10 +5,20 @@
 
 typedef struct cit_state cit_state;
 struct cit_state {
+    SP_Arena* arena;
+
     b8 (*gfx_init)(cit_config config);
     void (*gfx_terminate)(void);
     cit_window* (*window_create)(cit_window_desc desc);
     void (*window_destroy)(cit_window* window);
+
+    cit_window* window_stack;
+};
+
+struct cit_window {
+    cit_window* next;
+    b8 is_open;
+    void* internal;
 };
 
 extern cit_state _cit_state;

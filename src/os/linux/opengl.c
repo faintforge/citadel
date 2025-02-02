@@ -92,7 +92,7 @@ void cit_os_gfx_gl_equip_window(cit_window* window) {
             EGL_CONFORMANT,        EGL_OPENGL_BIT,
             EGL_RENDERABLE_TYPE,   EGL_OPENGL_BIT,
             EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
-            EGL_NATIVE_VISUAL_ID,  window->visual_id,
+            // EGL_NATIVE_VISUAL_ID,  window->visual_id,
 
             EGL_RED_SIZE,      8,
             EGL_GREEN_SIZE,    8,
@@ -128,30 +128,30 @@ void cit_os_gfx_gl_equip_window(cit_window* window) {
     sp_info("Version: %s", glGetString(GL_VERSION));
     sp_info("Shading language: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    EGLSurface surface = eglCreateWindowSurface(gfx_gl_state.dpy,
-        gfx_gl_state.config,
-        (EGLNativeWindowType) window->handle,
-        (const i32[]) {
-            // EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_SRGB,
-            EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_LINEAR,
-            EGL_RENDER_BUFFER, EGL_BACK_BUFFER,
-            EGL_NONE,
-        });
-    if (surface == EGL_NO_SURFACE) {
-        sp_error("EGL failed to create window surface!");
-        sp_error("Code: %llu", surface);
-        return;
-    }
+    // EGLSurface surface = eglCreateWindowSurface(gfx_gl_state.dpy,
+    //     gfx_gl_state.config,
+    //     (EGLNativeWindowType) window->handle,
+    //     (const i32[]) {
+    //         // EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_SRGB,
+    //         EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_LINEAR,
+    //         EGL_RENDER_BUFFER, EGL_BACK_BUFFER,
+    //         EGL_NONE,
+    //     });
+    // if (surface == EGL_NO_SURFACE) {
+    //     sp_error("EGL failed to create window surface!");
+    //     sp_error("Code: %llu", surface);
+    //     return;
+    // }
 
-    eglMakeCurrent(gfx_gl_state.dpy, surface, surface, gfx_gl_state.ctx);
-    eglSwapBuffers(gfx_gl_state.dpy, surface);
+    // eglMakeCurrent(gfx_gl_state.dpy, surface, surface, gfx_gl_state.ctx);
+    // eglSwapBuffers(gfx_gl_state.dpy, surface);
     // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     // glClear(GL_COLOR_BUFFER_BIT);
 
-    cit_os_gfx_gl_window_data* data = sp_arena_push_no_zero(gfx_gl_state.arena, sizeof(cit_os_gfx_gl_window_data));
-    data->surface = surface;
-    // data->colormap = colormap;
-    window->gfx_data = data;
+    // cit_os_gfx_gl_window_data* data = sp_arena_push_no_zero(gfx_gl_state.arena, sizeof(cit_os_gfx_gl_window_data));
+    // data->surface = surface;
+    // // data->colormap = colormap;
+    // window->gfx_data = data;
 }
 
 cit_os_gfx_interface cit_os_gfx_gl_interface = {

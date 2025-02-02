@@ -3,6 +3,7 @@
 
 #include "citadel.h"
 #include "internal.h"
+#include "gfx/gfx_internal.h"
 
 b8 cit_init(cit_config config) {
     if (!cit_os_init()) { return false; }
@@ -12,4 +13,8 @@ b8 cit_init(cit_config config) {
 }
 
 void cit_terminate(void) {
+}
+
+cit_window* cit_window_create(cit_window_desc desc) {
+    return cit_gfx_interface_curr.window_create(desc);
 }

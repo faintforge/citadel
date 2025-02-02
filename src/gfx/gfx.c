@@ -3,6 +3,8 @@
 #include "spire.h"
 #include "gfx_internal.h"
 
+cit_gfx_interface cit_gfx_interface_curr = {0};
+
 b8 cit_gfx_init(cit_config config) {
     switch (config.backend) {
         case CIT_GFX_BACKEND_OPENGL:

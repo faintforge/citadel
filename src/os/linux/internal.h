@@ -9,14 +9,14 @@
 #include <xcb/xproto.h>
 #include <X11/Xlib.h>
 
-struct cit_window {
-    cit_window* next;
-    xcb_window_t handle;
-    xcb_atom_t destroy_atom;
-    xcb_visualid_t visual_id;
-    b8 is_open;
-    void* gfx_data;
-};
+// struct cit_window {
+//     cit_window* next;
+//     xcb_window_t handle;
+//     xcb_atom_t destroy_atom;
+//     xcb_visualid_t visual_id;
+//     b8 is_open;
+//     void* gfx_data;
+// };
 
 typedef struct cit_os_state cit_os_state;
 struct cit_os_state {

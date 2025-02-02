@@ -10,19 +10,30 @@
 
 #include "../os_internal.h"
 
+xcb_visualtype_t* find_xcb_visual(xcb_screen_t* screen) {
+    xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(screen);
+
+    for (; depth_iter.rem; xcb_depth_next(&depth_iter)) {
+        xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
+
+        for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
+            if (visual_iter.data->_class == XCB_VISUAL_CLASS_TRUE_COLOR) {
+                return visual_iter.data;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 cit_window* cit_window_create(SP_Ivec2 size, SP_Str title, b8 resizable) {
     cit_window* window = sp_arena_push_no_zero(os_state.arena, sizeof(cit_window));
     window->is_open = true;
 
-    i32 x11_screen = DefaultScreen(os_state.xdpy);
     const xcb_setup_t* setup = xcb_get_setup(os_state.conn);
-    xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
-    xcb_screen_t* screen = NULL;
-    for (; iter.rem; x11_screen--, xcb_screen_next(&iter)) {
-        if (x11_screen == 0) {
-            screen = iter.data;
-        }
-    }
+    xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
+    xcb_visualtype_t* visual = find_xcb_visual(screen);
+    window->visual_id = visual->visual_id;
 
     u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     u32 values[] = {
@@ -39,8 +50,10 @@ cit_window* cit_window_create(SP_Ivec2 size, SP_Str title, b8 resizable) {
             size.x, size.y,
             0,
             XCB_WINDOW_CLASS_INPUT_OUTPUT,
-            screen->root_visual,
+            visual->visual_id,
             mask, values);
+
+    // xcb_change_window_attributes(os_state.conn, window->handle, XCB_CW_COLORMAP, &colormap);
 
     // Set window properties
     // https://xcb.freedesktop.org/windowcontextandmanipulation/

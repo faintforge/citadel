@@ -1,3 +1,5 @@
+#ifndef LINUX_INTERNAL_H_
+#define LINUX_INTERNAL_H_
 #include "spire.h"
 #ifdef SP_OS_LINUX
 
@@ -11,6 +13,7 @@ struct cit_window {
     cit_window* next;
     xcb_window_t handle;
     xcb_atom_t destroy_atom;
+    xcb_visualid_t visual_id;
     b8 is_open;
     void* gfx_data;
 };
@@ -26,3 +29,4 @@ struct cit_os_state {
 extern cit_os_state os_state;
 
 #endif // SP_OS_LINUX
+#endif // LINUX_INTERNAL_H_

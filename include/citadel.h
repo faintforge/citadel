@@ -3,10 +3,24 @@
 
 #include "spire.h"
 
-// OS Layer
+typedef enum cit_gfx_backend {
+    CIT_GFX_BACKEND_OPENGL,
+    CIT_GFX_BACKEND_VULKAN,
+} cit_gfx_backend;
 
-extern b8   cit_os_init(void);
-extern void cit_os_terminate(void);
+typedef struct cit_config cit_config;
+struct cit_config {
+    cit_gfx_backend backend;
+    struct {
+        u32 version_major;
+        u32 version_minor;
+        b8 es;
+    } gl;
+    struct {} vk;
+};
+
+extern b8   cit_init(cit_config config);
+extern void cit_terminate(void);
 
 // Windowing
 
@@ -16,10 +30,5 @@ extern cit_window* cit_window_create(SP_Ivec2 size, SP_Str title, b8 resizable);
 extern void        cit_window_destroy(cit_window* window);
 extern b8          cit_window_is_open(const cit_window* window);
 extern void        cit_poll_events(void);
-
-// Graphics
-
-extern b8   cit_gfx_init(void);
-extern void cit_gfx_terminate(void);
 
 #endif // CITADEL_H_

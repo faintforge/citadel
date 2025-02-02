@@ -1,7 +1,8 @@
 #include "spire.h"
+#include <xcb/xproto.h>
 #ifdef SP_OS_LINUX
 
-#include "../gfx_internal.h"
+#include "../../cit_internal.h"
 #include "../../os/linux/internal.h"
 
 #include <EGL/egl.h>
@@ -18,13 +19,15 @@ struct cit_gfx_gl_state {
 
 static cit_gfx_gl_state gl_state = {0};
 
-struct cit_window {
+typedef struct linux_gl_window linux_gl_window;
+struct linux_gl_window {
     xcb_window_t handle;
     xcb_atom_t destroy_atom;
     b8 is_open;
+    EGLSurface surface;
 };
 
-b8 cit_gfx_os_opengl_init(cit_config config) {
+b8 cit_os_gl_init(cit_config config) {
     EGLDisplay dpy = eglGetDisplay(os_state.xdpy);
     // EGLDisplay dpy = eglGetPlatformDisplay(EGL_PLATFORM_XCB_EXT, os_state.conn, (const EGLAttrib[]) {
     //         EGL_PLATFORM_XCB_SCREEN_EXT,
@@ -116,14 +119,14 @@ b8 cit_gfx_os_opengl_init(cit_config config) {
     return true;
 }
 
-void cit_gfx_os_opengl_terminate(void) {
+void cit_os_gl_terminate(void) {
     eglMakeCurrent(gl_state.dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(gl_state.dpy, gl_state.ctx);
     eglTerminate(gl_state.dpy);
 }
 
-cit_window* cit_gfx_os_opengl_window_create(cit_window_desc desc) {
-    cit_window* window = sp_arena_push_no_zero(os_state.arena, sizeof(cit_window));
+cit_window* cit_os_gl_window_create(cit_window_desc desc) {
+    linux_gl_window* window = sp_arena_push_no_zero(os_state.arena, sizeof(linux_gl_window));
     window->is_open = true;
 
     i32 visual_id;
@@ -208,14 +211,15 @@ cit_window* cit_gfx_os_opengl_window_create(cit_window_desc desc) {
         sp_error("Code: %llu", surface);
         return false;
     }
+    window->surface = surface;
 
-    return window;
+    return (cit_window*) window;
 }
 
-cit_gfx_interface cit_gfx_opengl_interface = {
-    .init = cit_gfx_os_opengl_init,
-    .terminate = cit_gfx_os_opengl_terminate,
-    .window_create = cit_gfx_os_opengl_window_create,
-};
+void cit_os_gl_window_destroy(cit_window *window) {
+    linux_gl_window* _window = (linux_gl_window*) window;
+    xcb_destroy_window(os_state.conn, _window->handle);
+    eglDestroySurface(gl_state.dpy, _window->surface);
+}
 
 #endif // SP_OS_LINUX

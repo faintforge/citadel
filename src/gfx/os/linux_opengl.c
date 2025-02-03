@@ -6,9 +6,6 @@
 
 #include <EGL/egl.h>
 #include <GL/gl.h>
-#include <xcb/xcb.h>
-#include <xcb/xcb_icccm.h>
-#include <xcb/xproto.h>
 
 typedef struct cit_gfx_gl_state cit_gfx_gl_state;
 struct cit_gfx_gl_state {
@@ -123,82 +120,20 @@ void cit_os_gl_terminate(void) {
 }
 
 cit_window* cit_os_gl_window_create(cit_window_desc desc) {
+    i32 visual_id;
+    if (!eglGetConfigAttrib(gl_state.dpy, gl_state.config, EGL_NATIVE_VISUAL_ID, &visual_id)) {
+        sp_error("EGL failed to get native visual id!");
+        return NULL;
+    }
+
     cit_window* win = sp_arena_push_no_zero(_cit_state.arena, sizeof(cit_window));
-    linux_window* lwin = sp_arena_push_no_zero(_cit_state.arena, sizeof(linux_window));
     linux_gl_window* lglwin = sp_arena_push_no_zero(_cit_state.arena, sizeof(linux_gl_window));
-    *lwin = (linux_window) {
-        .internal = lglwin,
-    };
+    linux_window* lwin = internal_linux_window_create(desc, visual_id);
+    lwin->internal = lglwin;
     *win = (cit_window) {
         .internal = lwin,
         .is_open = true,
     };
-
-    i32 visual_id;
-    eglGetConfigAttrib(gl_state.dpy, gl_state.config, EGL_NATIVE_VISUAL_ID, &visual_id);
-    const xcb_setup_t* setup = xcb_get_setup(linux_state.conn);
-    xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
-
-    u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-    u32 values[] = {
-        screen->black_pixel,
-        XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_EXPOSURE,
-    };
-    lwin->handle = xcb_generate_id(linux_state.conn);
-    xcb_create_window(
-            linux_state.conn,
-            XCB_COPY_FROM_PARENT,
-            lwin->handle,
-            screen->root,
-            0, 0,
-            desc.size.x, desc.size.y,
-            0,
-            XCB_WINDOW_CLASS_INPUT_OUTPUT,
-            visual_id,
-            mask, values);
-
-    // Set window properties
-    // https://xcb.freedesktop.org/windowcontextandmanipulation/
-
-    // Title
-    xcb_change_property(linux_state.conn,
-            XCB_PROP_MODE_REPLACE,
-            lwin->handle,
-            XCB_ATOM_WM_NAME,
-            XCB_ATOM_STRING,
-            8,
-            desc.title.len,
-            desc.title.data);
-
-    // Set resizability
-    if (!desc.resizable) {
-        xcb_size_hints_t hints;
-        xcb_icccm_size_hints_set_min_size(&hints, desc.size.x, desc.size.y);
-        xcb_icccm_size_hints_set_max_size(&hints, desc.size.x, desc.size.y);
-        xcb_icccm_set_wm_size_hints(linux_state.conn,
-                lwin->handle,
-                XCB_ATOM_WM_NORMAL_HINTS,
-                &hints);
-    }
-
-    // Destroy window event
-    xcb_intern_atom_cookie_t protocol_cookie = xcb_intern_atom(linux_state.conn, true, 12, "WM_PROTOCOLS");
-    xcb_intern_atom_cookie_t destroy_cookie = xcb_intern_atom(linux_state.conn, false, 16, "WM_DELETE_WINDOW");
-    xcb_intern_atom_reply_t* protocol_reply = xcb_intern_atom_reply(linux_state.conn, protocol_cookie, NULL);
-    xcb_intern_atom_reply_t* destroy_reply = xcb_intern_atom_reply(linux_state.conn, destroy_cookie, NULL);
-    xcb_change_property(linux_state.conn,
-            XCB_PROP_MODE_REPLACE,
-            lwin->handle,
-            protocol_reply->atom,
-            XCB_ATOM_ATOM,
-            32,
-            1,
-            &destroy_reply->atom);
-    lwin->destroy_atom = destroy_reply->atom;
-
-    // Show the window
-    xcb_map_window(linux_state.conn, lwin->handle);
-    xcb_flush(linux_state.conn);
 
     EGLSurface surface = eglCreateWindowSurface(gl_state.dpy,
         gl_state.config,
@@ -211,15 +146,12 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
         });
     if (surface == EGL_NO_SURFACE) {
         sp_error("EGL failed to create window surface!");
-        sp_error("Code: %llu", surface);
+        sp_debug("code: %llu", surface);
         return false;
     }
     lglwin->surface = surface;
 
     eglMakeCurrent(gl_state.dpy, surface, surface, gl_state.ctx);
-    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    // eglSwapBuffers(gl_state.dpy, surface);
 
     return win;
 }

@@ -1,4 +1,5 @@
 #include "spire.h"
+#include <X11/X.h>
 #ifdef SP_OS_LINUX
 
 #include "linux_internal.h"
@@ -95,7 +96,31 @@ static u32 utf8_to_utf32(char* buffer) {
     return codepoint;
 }
 
-static cit_event handle_key_event(linux_window* lwin, XKeyEvent* ev) {
+static cit_event handle_raw_key_event(linux_window* window, XKeyEvent* ev) {
+    cit_event cit_ev = {0};
+
+    // TODO: Translate keysym
+    KeySym sym = XLookupKeysym(ev, 0);
+
+    // Event type
+    if (ev->type == KeyPress)   { cit_ev.type = CIT_EVENT_TYPE_KEY_PRESS; }
+    if (ev->type == KeyRelease) { cit_ev.type = CIT_EVENT_TYPE_KEY_RELEASE; }
+
+    // Scandcode
+    cit_ev.key.scancode = ev->keycode;
+
+    // Mod
+    cit_mod mod = CIT_MOD_NONE;
+    if (ev->state & XCB_MOD_MASK_SHIFT)   { mod |= CIT_MOD_SHIFT; }
+    if (ev->state & XCB_MOD_MASK_CONTROL) { mod |= CIT_MOD_CRTL; }
+    if (ev->state & XCB_MOD_MASK_1)       { mod |= CIT_MOD_ALT_L; }
+    if (ev->state & XCB_MOD_MASK_5)       { mod |= CIT_MOD_ALT_R; }
+    cit_ev.key.mod = mod;
+
+    return cit_ev;
+}
+
+static cit_event handle_text_event(linux_window* lwin, XKeyEvent* ev) {
     cit_event cit_ev = {0};
 
     // Translate event
@@ -113,9 +138,10 @@ static cit_event handle_key_event(linux_window* lwin, XKeyEvent* ev) {
         return cit_ev;
     }
 
+    // TODO: Translate keysym
+
     // Event type
-    if (ev->type == KeyPress)   { cit_ev.type = CIT_EVENT_TYPE_KEY_PRESS; }
-    if (ev->type == KeyRelease) { cit_ev.type = CIT_EVENT_TYPE_KEY_RELEASE; }
+    cit_ev.type = CIT_EVENT_TYPE_TEXT;
 
     // Scandcode
     cit_ev.key.scancode = ev->keycode;
@@ -170,11 +196,27 @@ cit_event* cit_poll_events(void) {
                     .same_screen = e->same_screen,
                 };
 
+                // Handle raw input first
+                {
+                    cit_event* user_ev = sp_arena_push_no_zero(_cit_state.events_arena, sizeof(cit_event));
+                    *user_ev = handle_raw_key_event(lwin, &xkey);
+                    if (first_event == NULL) {
+                        first_event = user_ev;
+                        last_event = user_ev;
+                    } else {
+                        user_ev->prev = last_event;
+                        last_event->next = user_ev;
+                        last_event = user_ev;
+                    }
+                }
+
+                // Filter out textual input
                 if (XFilterEvent((XEvent*) &xkey, xkey.window)) {
                     break;
                 }
 
-                cit_event cit_ev = handle_key_event(lwin, &xkey);
+                // Handle text input
+                cit_event cit_ev = handle_text_event(lwin, &xkey);
                 if (cit_ev.type == CIT_EVENT_TYPE_NONE) {
                     break;
                 }
@@ -185,6 +227,7 @@ cit_event* cit_poll_events(void) {
                     first_event = user_ev;
                     last_event = user_ev;
                 } else {
+                    user_ev->prev = last_event;
                     last_event->next = user_ev;
                     last_event = user_ev;
                 }
@@ -206,7 +249,7 @@ cit_event* cit_poll_events(void) {
             }
 
             linux_window* lwin = get_window_from_event(e->window)->internal;
-            cit_event cit_ev = handle_key_event(lwin, e);
+            cit_event cit_ev = handle_text_event(lwin, e);
             if (cit_ev.type == CIT_EVENT_TYPE_NONE) {
                 continue;
             }

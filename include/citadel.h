@@ -43,6 +43,7 @@ typedef enum cit_event_type {
     CIT_EVENT_TYPE_NONE,
     CIT_EVENT_TYPE_KEY_PRESS,
     CIT_EVENT_TYPE_KEY_RELEASE,
+    CIT_EVENT_TYPE_TEXT,
 } cit_event_type;
 
 typedef enum cit_mod {

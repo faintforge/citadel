@@ -193,6 +193,19 @@ cit_event* cit_poll_events(void) {
                 }
             } break;
 
+            case XCB_CONFIGURE_NOTIFY: {
+                xcb_configure_notify_event_t* e = (xcb_configure_notify_event_t*) ev;
+                cit_window* window = get_window_from_event(e->window);
+                if (window->size.x != e->width || window->size.y != e->height) {
+                    window->size = sp_iv2(e->width, e->height);
+                    push_event(&first_event, &last_event, (cit_event) {
+                            .type = CIT_EVENT_TYPE_WINDOW_RESIZE,
+                            .window = window,
+                            .size = window->size,
+                            });
+                }
+            } break;
+
             case XCB_KEY_RELEASE:
             case XCB_KEY_PRESS: {
                 xcb_key_press_event_t* e = (xcb_key_press_event_t*) ev;

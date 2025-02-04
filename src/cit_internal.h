@@ -18,6 +18,7 @@ struct cit_state {
 
 struct cit_window {
     cit_window* next;
+    SP_Ivec2 size;
     void* internal;
 };
 

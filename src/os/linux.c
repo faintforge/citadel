@@ -95,7 +95,7 @@ static u32 utf8_to_utf32(char* buffer) {
     return codepoint;
 }
 
-cit_event handle_key_event(linux_window* lwin, XKeyEvent* ev) {
+static cit_event handle_key_event(linux_window* lwin, XKeyEvent* ev) {
     cit_event cit_ev = {0};
 
     // Translate event
@@ -155,7 +155,7 @@ cit_event* cit_poll_events(void) {
                 linux_window* lwin = get_window_from_event(e->event)->internal;
 
                 XKeyEvent xkey = {
-                    .type        = KeyPress,
+                    .type        = e->response_type == XCB_KEY_PRESS ? KeyPress : KeyRelease,
                     .display     = linux_state.xdpy,
                     .window      = lwin->handle,
                     .root        = e->root,

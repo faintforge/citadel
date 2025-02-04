@@ -48,6 +48,7 @@ typedef enum cit_event_type {
     CIT_EVENT_TYPE_MOUSE_BUTTON_PRESS,
     CIT_EVENT_TYPE_MOUSE_BUTTON_RELEASE,
     CIT_EVENT_TYPE_MOUSE_MOVE,
+    CIT_EVENT_TYPE_MOUSE_SCROLL,
 } cit_event_type;
 
 typedef enum cit_mod {
@@ -78,8 +79,8 @@ struct cit_event {
     u32 codepoint;
     cit_mouse_button button;
     SP_Ivec2 position;
-    SP_Ivec2 delta;
     SP_Ivec2 size;
+    i8 scroll;
 };
 
 extern cit_event* cit_poll_events(void);

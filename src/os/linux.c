@@ -245,6 +245,7 @@ cit_event* cit_poll_events(void) {
                 xcb_button_press_event_t* e = (xcb_button_press_event_t*) ev;
 
                 cit_mouse_button btn = -1;
+                i8 scroll = 0;
                 switch (e->detail) {
                     case XCB_BUTTON_INDEX_1:
                         btn = CIT_MOUSE_BUTTON_LEFT;
@@ -255,14 +256,30 @@ cit_event* cit_poll_events(void) {
                     case XCB_BUTTON_INDEX_3:
                         btn = CIT_MOUSE_BUTTON_RIGHT;
                         break;
+                    case XCB_BUTTON_INDEX_4:
+                        scroll = 1;
+                        break;
+                    case XCB_BUTTON_INDEX_5:
+                        scroll = -1;
+                        break;
                     default:
                         break;
                 }
-                if (btn == -1) {
+                if (btn == -1 && scroll == 0) {
                     break;
                 }
 
                 cit_window* win = get_window_from_event(e->event);
+                if (scroll != 0) {
+                    push_event(&first_event, &last_event, (cit_event) {
+                            .type = CIT_EVENT_TYPE_MOUSE_SCROLL,
+                            .window = win,
+                            .position = sp_iv2(e->event_x, e->event_y),
+                            .scroll = scroll,
+                        });
+                    break;
+                }
+
                 push_event(&first_event, &last_event, (cit_event) {
                         .type = e->response_type == XCB_BUTTON_PRESS ?
                             CIT_EVENT_TYPE_MOUSE_BUTTON_PRESS :

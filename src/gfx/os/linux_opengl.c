@@ -159,8 +159,8 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
 void cit_os_gl_window_destroy(cit_window *window) {
     linux_window* lwin = window->internal;
     linux_gl_window* lglwin = (linux_gl_window*) lwin->internal;
-    xcb_destroy_window(linux_state.conn, lwin->handle);
     eglDestroySurface(gl_state.dpy, lglwin->surface);
+    internal_linux_window_destroy(lwin);
 }
 
 #endif // SP_OS_LINUX

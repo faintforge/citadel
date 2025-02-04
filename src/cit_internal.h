@@ -6,6 +6,7 @@
 typedef struct cit_state cit_state;
 struct cit_state {
     SP_Arena* arena;
+    SP_Arena* events_arena;
 
     b8 (*gfx_init)(cit_config config);
     void (*gfx_terminate)(void);

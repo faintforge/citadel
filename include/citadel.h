@@ -35,8 +35,38 @@ typedef struct cit_window cit_window;
 
 extern cit_window* cit_window_create(cit_window_desc desc);
 extern void        cit_window_destroy(cit_window* window);
-
 extern b8          cit_window_is_open(const cit_window* window);
-extern void        cit_poll_events(void);
+
+// Events
+
+typedef enum cit_event_type {
+    CIT_EVENT_TYPE_NONE,
+    CIT_EVENT_TYPE_KEY_PRESS,
+    CIT_EVENT_TYPE_KEY_RELEASE,
+} cit_event_type;
+
+typedef enum cit_mod {
+    CIT_MOD_NONE  = 0,
+    CIT_MOD_SHIFT = 1 << 0,
+    CIT_MOD_CRTL  = 1 << 1,
+    CIT_MOD_ALT_L = 1 << 2,
+    CIT_MOD_ALT_R = 1 << 3,
+} cit_mod;
+
+typedef struct cit_event cit_event;
+struct cit_event {
+    cit_event* next;
+    cit_event* prev;
+
+    cit_event_type type;
+    struct {
+        // cit_key key;
+        u32 scancode;
+        u32 codepoint;
+        cit_mod mod;
+    } key;
+};
+
+extern cit_event* cit_poll_events(void);
 
 #endif // CITADEL_H_

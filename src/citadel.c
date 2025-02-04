@@ -30,6 +30,9 @@ b8 cit_init(cit_config config) {
     _cit_state.arena = sp_arena_create();
     sp_arena_tag(_cit_state.arena, sp_str_lit("citadel"));
 
+    _cit_state.events_arena = sp_arena_create();
+    sp_arena_tag(_cit_state.events_arena, sp_str_lit("events"));
+
     if (!cit_os_init()) { return false; }
     if (!_cit_state.gfx_init(config)) { return false; }
 
@@ -39,6 +42,8 @@ b8 cit_init(cit_config config) {
 void cit_terminate(void) {
     _cit_state.gfx_terminate();
     cit_os_terminate();
+    sp_arena_destroy(_cit_state.events_arena);
+    sp_arena_destroy(_cit_state.arena);
 }
 
 cit_window* cit_window_create(cit_window_desc desc) {

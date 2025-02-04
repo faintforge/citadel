@@ -132,7 +132,6 @@ cit_window* cit_os_gl_window_create(cit_window_desc desc) {
     lwin->internal = lglwin;
     *win = (cit_window) {
         .internal = lwin,
-        .is_open = true,
     };
 
     EGLSurface surface = eglCreateWindowSurface(gl_state.dpy,

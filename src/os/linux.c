@@ -48,10 +48,6 @@ void cit_os_terminate(void) {
     XCloseDisplay(linux_state.xdpy);
 }
 
-b8 cit_window_is_open(const cit_window* window) {
-    return window->is_open;
-}
-
 static cit_window* get_window_from_event(xcb_window_t event_window) {
     cit_window* window = _cit_state.window_stack;
     linux_window* lwin;
@@ -96,8 +92,10 @@ static u32 utf8_to_utf32(char* buffer) {
     return codepoint;
 }
 
-static cit_event handle_raw_key_event(linux_window* window, XKeyEvent* ev) {
-    cit_event cit_ev = {0};
+static cit_event handle_raw_key_event(cit_window* win, XKeyEvent* ev) {
+    cit_event cit_ev = {
+        .window = win,
+    };
 
     // TODO: Translate keysym
     KeySym sym = XLookupKeysym(ev, 0);
@@ -107,7 +105,7 @@ static cit_event handle_raw_key_event(linux_window* window, XKeyEvent* ev) {
     if (ev->type == KeyRelease) { cit_ev.type = CIT_EVENT_TYPE_KEY_RELEASE; }
 
     // Scandcode
-    cit_ev.key.scancode = ev->keycode;
+    cit_ev.scancode = ev->keycode;
 
     // Mod
     cit_mod mod = CIT_MOD_NONE;
@@ -115,13 +113,17 @@ static cit_event handle_raw_key_event(linux_window* window, XKeyEvent* ev) {
     if (ev->state & XCB_MOD_MASK_CONTROL) { mod |= CIT_MOD_CRTL; }
     if (ev->state & XCB_MOD_MASK_1)       { mod |= CIT_MOD_ALT_L; }
     if (ev->state & XCB_MOD_MASK_5)       { mod |= CIT_MOD_ALT_R; }
-    cit_ev.key.mod = mod;
+    cit_ev.mod = mod;
 
     return cit_ev;
 }
 
-static cit_event handle_text_event(linux_window* lwin, XKeyEvent* ev) {
-    cit_event cit_ev = {0};
+static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
+    linux_window* lwin = win->internal;
+    cit_event cit_ev = {
+        .window = win,
+        .scancode = ev->keycode,
+    };
 
     // Translate event
     char buffer[32];
@@ -132,8 +134,7 @@ static cit_event handle_text_event(linux_window* lwin, XKeyEvent* ev) {
         sp_warn("Buffer too small for character input!");
         return cit_ev;
     } else if ((status == XLookupChars || status == XLookupBoth) && len > 0) {
-        cit_ev.key.codepoint = utf8_to_utf32(buffer);
-        // sp_debug("codepoint: %u, '%lc'", cit_ev.key.codepoint, cit_ev.key.codepoint);
+        cit_ev.codepoint = utf8_to_utf32(buffer);
     } else if (status == XLookupNone) {
         return cit_ev;
     }
@@ -141,10 +142,9 @@ static cit_event handle_text_event(linux_window* lwin, XKeyEvent* ev) {
     // TODO: Translate keysym
 
     // Event type
+    // Set event down here because we want to return CIT_EVENT_TYPE_NONE if
+    // Xutf8LookupString fails.
     cit_ev.type = CIT_EVENT_TYPE_TEXT;
-
-    // Scandcode
-    cit_ev.key.scancode = ev->keycode;
 
     // Mod
     cit_mod mod = CIT_MOD_NONE;
@@ -152,9 +152,25 @@ static cit_event handle_text_event(linux_window* lwin, XKeyEvent* ev) {
     if (ev->state & XCB_MOD_MASK_CONTROL) { mod |= CIT_MOD_CRTL; }
     if (ev->state & XCB_MOD_MASK_1)       { mod |= CIT_MOD_ALT_L; }
     if (ev->state & XCB_MOD_MASK_5)       { mod |= CIT_MOD_ALT_R; }
-    cit_ev.key.mod = mod;
+    cit_ev.mod = mod;
 
     return cit_ev;
+}
+
+static void push_event(cit_event** first, cit_event** last, cit_event event) {
+        if (event.type == CIT_EVENT_TYPE_NONE) {
+            return;
+        }
+        cit_event* user_ev = sp_arena_push_no_zero(_cit_state.events_arena, sizeof(cit_event));
+        *user_ev = event;
+        if (*first == NULL) {
+            *first = user_ev;
+            *last = user_ev;
+        } else {
+            user_ev->prev = *last;
+            (*last)->next = user_ev;
+            *last = user_ev;
+        }
 }
 
 cit_event* cit_poll_events(void) {
@@ -171,14 +187,18 @@ cit_event* cit_poll_events(void) {
                 cit_window* window = get_window_from_event(e->window);
                 linux_window* lwin = window->internal;
                 if (e->data.data32[0] == lwin->destroy_atom) {
-                    window->is_open = false;
+                    push_event(&first_event, &last_event, (cit_event) {
+                            .type = CIT_EVENT_TYPE_WINDOW_CLOSE,
+                            .window = window,
+                        });
                 }
             } break;
 
             case XCB_KEY_RELEASE:
             case XCB_KEY_PRESS: {
                 xcb_key_press_event_t* e = (xcb_key_press_event_t*) ev;
-                linux_window* lwin = get_window_from_event(e->event)->internal;
+                cit_window* win = get_window_from_event(e->event);
+                linux_window* lwin = win->internal;
 
                 XKeyEvent xkey = {
                     .type        = e->response_type == XCB_KEY_PRESS ? KeyPress : KeyRelease,
@@ -197,18 +217,7 @@ cit_event* cit_poll_events(void) {
                 };
 
                 // Handle raw input first
-                {
-                    cit_event* user_ev = sp_arena_push_no_zero(_cit_state.events_arena, sizeof(cit_event));
-                    *user_ev = handle_raw_key_event(lwin, &xkey);
-                    if (first_event == NULL) {
-                        first_event = user_ev;
-                        last_event = user_ev;
-                    } else {
-                        user_ev->prev = last_event;
-                        last_event->next = user_ev;
-                        last_event = user_ev;
-                    }
-                }
+                push_event(&first_event, &last_event, handle_raw_key_event(win, &xkey));
 
                 // Filter out textual input
                 if (XFilterEvent((XEvent*) &xkey, xkey.window)) {
@@ -216,27 +225,15 @@ cit_event* cit_poll_events(void) {
                 }
 
                 // Handle text input
-                cit_event cit_ev = handle_text_event(lwin, &xkey);
-                if (cit_ev.type == CIT_EVENT_TYPE_NONE) {
-                    break;
-                }
-                // Push event
-                cit_event* user_ev = sp_arena_push_no_zero(_cit_state.events_arena, sizeof(cit_event));
-                *user_ev = cit_ev;
-                if (first_event == NULL) {
-                    first_event = user_ev;
-                    last_event = user_ev;
-                } else {
-                    user_ev->prev = last_event;
-                    last_event->next = user_ev;
-                    last_event = user_ev;
-                }
+                push_event(&first_event, &last_event, handle_text_event(win, &xkey));
             } break;
 
             default:
                 break;
         }
         free(ev);
+
+        // Push event
     }
 
     while (XPending(linux_state.xdpy)) {
@@ -248,21 +245,8 @@ cit_event* cit_poll_events(void) {
                 continue;
             }
 
-            linux_window* lwin = get_window_from_event(e->window)->internal;
-            cit_event cit_ev = handle_text_event(lwin, e);
-            if (cit_ev.type == CIT_EVENT_TYPE_NONE) {
-                continue;
-            }
-            // Push event
-            cit_event* user_ev = sp_arena_push_no_zero(_cit_state.events_arena, sizeof(cit_event));
-            *user_ev = cit_ev;
-            if (first_event == NULL) {
-                first_event = user_ev;
-                last_event = user_ev;
-            } else {
-                last_event->next = user_ev;
-                last_event = user_ev;
-            }
+            cit_window* win = get_window_from_event(e->window);
+            push_event(&first_event, &last_event, handle_text_event(win, e));
         }
     }
 

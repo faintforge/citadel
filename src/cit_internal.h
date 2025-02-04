@@ -18,7 +18,6 @@ struct cit_state {
 
 struct cit_window {
     cit_window* next;
-    b8 is_open;
     void* internal;
 };
 

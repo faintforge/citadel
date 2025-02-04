@@ -35,12 +35,12 @@ typedef struct cit_window cit_window;
 
 extern cit_window* cit_window_create(cit_window_desc desc);
 extern void        cit_window_destroy(cit_window* window);
-extern b8          cit_window_is_open(const cit_window* window);
 
 // Events
 
 typedef enum cit_event_type {
     CIT_EVENT_TYPE_NONE,
+    CIT_EVENT_TYPE_WINDOW_CLOSE,
     CIT_EVENT_TYPE_KEY_PRESS,
     CIT_EVENT_TYPE_KEY_RELEASE,
     CIT_EVENT_TYPE_TEXT,
@@ -60,12 +60,12 @@ struct cit_event {
     cit_event* prev;
 
     cit_event_type type;
-    struct {
-        // cit_key key;
-        u32 scancode;
-        u32 codepoint;
-        cit_mod mod;
-    } key;
+    cit_window* window;
+
+    cit_mod mod;
+    // cit_key key;
+    u32 scancode;
+    u32 codepoint;
 };
 
 extern cit_event* cit_poll_events(void);

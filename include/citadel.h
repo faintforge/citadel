@@ -41,9 +41,13 @@ extern void        cit_window_destroy(cit_window* window);
 typedef enum cit_event_type {
     CIT_EVENT_TYPE_NONE,
     CIT_EVENT_TYPE_WINDOW_CLOSE,
+    CIT_EVENT_TYPE_WINDOW_RESIZE,
     CIT_EVENT_TYPE_KEY_PRESS,
     CIT_EVENT_TYPE_KEY_RELEASE,
     CIT_EVENT_TYPE_TEXT,
+    CIT_EVENT_TYPE_MOUSE_BUTTON_PRESS,
+    CIT_EVENT_TYPE_MOUSE_BUTTON_RELEASE,
+    CIT_EVENT_TYPE_MOUSE_MOVE,
 } cit_event_type;
 
 typedef enum cit_mod {
@@ -53,6 +57,12 @@ typedef enum cit_mod {
     CIT_MOD_ALT_L = 1 << 2,
     CIT_MOD_ALT_R = 1 << 3,
 } cit_mod;
+
+typedef enum cit_mouse_button : i8 {
+    CIT_MOUSE_BUTTON_LEFT,
+    CIT_MOUSE_BUTTON_RIGHT,
+    CIT_MOUSE_BUTTON_MIDDLE,
+} cit_mouse_button;
 
 typedef struct cit_event cit_event;
 struct cit_event {
@@ -66,6 +76,10 @@ struct cit_event {
     // cit_key key;
     u32 scancode;
     u32 codepoint;
+    cit_mouse_button button;
+    SP_Ivec2 position;
+    SP_Ivec2 delta;
+    SP_Ivec2 size;
 };
 
 extern cit_event* cit_poll_events(void);

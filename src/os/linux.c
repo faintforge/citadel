@@ -1,5 +1,4 @@
 #include "spire.h"
-#include <X11/X.h>
 #ifdef SP_OS_LINUX
 
 #include "linux_internal.h"
@@ -228,14 +227,56 @@ cit_event* cit_poll_events(void) {
                 push_event(&first_event, &last_event, handle_text_event(win, &xkey));
             } break;
 
+            case XCB_BUTTON_RELEASE:
+            case XCB_BUTTON_PRESS: {
+                xcb_button_press_event_t* e = (xcb_button_press_event_t*) ev;
+
+                cit_mouse_button btn = -1;
+                switch (e->detail) {
+                    case XCB_BUTTON_INDEX_1:
+                        btn = CIT_MOUSE_BUTTON_LEFT;
+                        break;
+                    case XCB_BUTTON_INDEX_2:
+                        btn = CIT_MOUSE_BUTTON_MIDDLE;
+                        break;
+                    case XCB_BUTTON_INDEX_3:
+                        btn = CIT_MOUSE_BUTTON_RIGHT;
+                        break;
+                    default:
+                        break;
+                }
+                if (btn == -1) {
+                    break;
+                }
+
+                cit_window* win = get_window_from_event(e->event);
+                push_event(&first_event, &last_event, (cit_event) {
+                        .type = e->response_type == XCB_BUTTON_PRESS ?
+                            CIT_EVENT_TYPE_MOUSE_BUTTON_PRESS :
+                            CIT_EVENT_TYPE_MOUSE_BUTTON_RELEASE,
+                        .window = win,
+                        .position = sp_iv2(e->event_x, e->event_y),
+                        .button = btn,
+                    });
+            } break;
+
+            case XCB_MOTION_NOTIFY: {
+                xcb_motion_notify_event_t* e = (xcb_motion_notify_event_t*) ev;
+                cit_window* win = get_window_from_event(e->event);
+                push_event(&first_event, &last_event, (cit_event) {
+                        .type = CIT_EVENT_TYPE_MOUSE_MOVE,
+                        .window = win,
+                        .position = sp_iv2(e->event_x, e->event_y),
+                    });
+            } break;
+
             default:
                 break;
         }
         free(ev);
-
-        // Push event
     }
 
+    // Handle composite text events like diacritics.
     while (XPending(linux_state.xdpy)) {
         XEvent ev;
         XNextEvent(linux_state.xdpy, &ev);
@@ -269,9 +310,13 @@ linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t 
 
     u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     u32 events = XCB_EVENT_MASK_STRUCTURE_NOTIFY |
-            XCB_EVENT_MASK_EXPOSURE |
+            // Keyboard
             XCB_EVENT_MASK_KEY_PRESS |
-            XCB_EVENT_MASK_KEY_RELEASE;
+            XCB_EVENT_MASK_KEY_RELEASE |
+            // Mouse
+            XCB_EVENT_MASK_BUTTON_PRESS |
+            XCB_EVENT_MASK_BUTTON_RELEASE |
+            XCB_EVENT_MASK_POINTER_MOTION;
     u32 values[] = {
         screen->black_pixel,
         events,

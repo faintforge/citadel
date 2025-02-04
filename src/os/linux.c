@@ -91,13 +91,153 @@ static u32 utf8_to_utf32(char* buffer) {
     return codepoint;
 }
 
+static cit_key translate_keysym(KeySym keysym) {
+    switch (keysym) {
+        // for (u32 uppercase = 'A'; uppercase <= 'Z'; uppercase++) {
+        //     u32 lowercase = uppercase + 'a' - 'A';
+        //     printf("case XK_%c:\ncase XK_%c:\n    return CIT_KEY_%c;\n", lowercase, uppercase, uppercase);
+        // }
+        case XK_a:
+        case XK_A:
+            return CIT_KEY_A;
+        case XK_b:
+        case XK_B:
+            return CIT_KEY_B;
+        case XK_c:
+        case XK_C:
+            return CIT_KEY_C;
+        case XK_d:
+        case XK_D:
+            return CIT_KEY_D;
+        case XK_e:
+        case XK_E:
+            return CIT_KEY_E;
+        case XK_f:
+        case XK_F:
+            return CIT_KEY_F;
+        case XK_g:
+        case XK_G:
+            return CIT_KEY_G;
+        case XK_h:
+        case XK_H:
+            return CIT_KEY_H;
+        case XK_i:
+        case XK_I:
+            return CIT_KEY_I;
+        case XK_j:
+        case XK_J:
+            return CIT_KEY_J;
+        case XK_k:
+        case XK_K:
+            return CIT_KEY_K;
+        case XK_l:
+        case XK_L:
+            return CIT_KEY_L;
+        case XK_m:
+        case XK_M:
+            return CIT_KEY_M;
+        case XK_n:
+        case XK_N:
+            return CIT_KEY_N;
+        case XK_o:
+        case XK_O:
+            return CIT_KEY_O;
+        case XK_p:
+        case XK_P:
+            return CIT_KEY_P;
+        case XK_q:
+        case XK_Q:
+            return CIT_KEY_Q;
+        case XK_r:
+        case XK_R:
+            return CIT_KEY_R;
+        case XK_s:
+        case XK_S:
+            return CIT_KEY_S;
+        case XK_t:
+        case XK_T:
+            return CIT_KEY_T;
+        case XK_u:
+        case XK_U:
+            return CIT_KEY_U;
+        case XK_v:
+        case XK_V:
+            return CIT_KEY_V;
+        case XK_w:
+        case XK_W:
+            return CIT_KEY_W;
+        case XK_x:
+        case XK_X:
+            return CIT_KEY_X;
+        case XK_y:
+        case XK_Y:
+            return CIT_KEY_Y;
+        case XK_z:
+        case XK_Z:
+            return CIT_KEY_Z;
+
+        // for (u32 i = 0; i <= 9; i++) {
+        //     printf("case XK_%d: return CIT_KEY_%d;\n", i, i);
+        // }
+        case XK_0: return CIT_KEY_0;
+        case XK_1: return CIT_KEY_1;
+        case XK_2: return CIT_KEY_2;
+        case XK_3: return CIT_KEY_3;
+        case XK_4: return CIT_KEY_4;
+        case XK_5: return CIT_KEY_5;
+        case XK_6: return CIT_KEY_6;
+        case XK_7: return CIT_KEY_7;
+        case XK_8: return CIT_KEY_8;
+        case XK_9: return CIT_KEY_9;
+
+        // for (u32 i = 1; i <= 12; i++) {
+        //     printf("case XK_F%d: return CIT_KEY_F%d;\n", i, i);
+        // }
+        case XK_F1: return CIT_KEY_F1;
+        case XK_F2: return CIT_KEY_F2;
+        case XK_F3: return CIT_KEY_F3;
+        case XK_F4: return CIT_KEY_F4;
+        case XK_F5: return CIT_KEY_F5;
+        case XK_F6: return CIT_KEY_F6;
+        case XK_F7: return CIT_KEY_F7;
+        case XK_F8: return CIT_KEY_F8;
+        case XK_F9: return CIT_KEY_F9;
+        case XK_F10: return CIT_KEY_F10;
+        case XK_F11: return CIT_KEY_F11;
+        case XK_F12: return CIT_KEY_F12;
+
+        case XK_Escape: return CIT_KEY_ESC;
+        case XK_Tab: return CIT_KEY_TAB;
+        case XK_BackSpace: return CIT_KEY_BACKSPACE;
+        case XK_Return: return CIT_KEY_ENTER;
+
+        case XK_Up: return CIT_KEY_ARROW_UP;
+        case XK_Left: return CIT_KEY_ARROW_LEFT;
+        case XK_Down: return CIT_KEY_ARROW_DOWN;
+        case XK_Right: return CIT_KEY_ARROW_RIGHT;
+
+        case XK_Caps_Lock: return CIT_KEY_CAPS_LOCK;
+        case XK_Shift_L: return CIT_KEY_SHIFT_L;
+        case XK_Shift_R: return CIT_KEY_SHIFT_R;
+        case XK_Control_L: return CIT_KEY_CTRL_L;
+        case XK_Control_R: return CIT_KEY_CTRL_R;
+        case XK_Alt_L: return CIT_KEY_ALT_L;
+        case XK_Alt_R: return CIT_KEY_ALT_R;
+        case XK_Super_L: return CIT_KEY_SUPER_L;
+        case XK_Super_R: return CIT_KEY_SUPER_R;
+
+        default:
+            return CIT_KEY_UNKNOWN;
+    }
+}
+
 static cit_event handle_raw_key_event(cit_window* win, XKeyEvent* ev) {
     cit_event cit_ev = {
         .window = win,
     };
 
-    // TODO: Translate keysym
-    KeySym sym = XLookupKeysym(ev, 0);
+    KeySym keysym = XLookupKeysym(ev, 0);
+    cit_ev.key = translate_keysym(keysym);
 
     // Event type
     if (ev->type == KeyPress)   { cit_ev.type = CIT_EVENT_TYPE_KEY_PRESS; }
@@ -139,6 +279,7 @@ static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
     }
 
     // TODO: Translate keysym
+    cit_ev.key = translate_keysym(keysym);
 
     // Event type
     // Set event down here because we want to return CIT_EVENT_TYPE_NONE if

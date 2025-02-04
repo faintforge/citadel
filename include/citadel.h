@@ -65,6 +65,83 @@ typedef enum cit_mouse_button : i8 {
     CIT_MOUSE_BUTTON_MIDDLE,
 } cit_mouse_button;
 
+typedef enum cit_key {
+    CIT_KEY_UNKNOWN,
+
+    CIT_KEY_0,
+    CIT_KEY_1,
+    CIT_KEY_2,
+    CIT_KEY_3,
+    CIT_KEY_4,
+    CIT_KEY_5,
+    CIT_KEY_6,
+    CIT_KEY_7,
+    CIT_KEY_8,
+    CIT_KEY_9,
+
+    CIT_KEY_F1,
+    CIT_KEY_F2,
+    CIT_KEY_F3,
+    CIT_KEY_F4,
+    CIT_KEY_F5,
+    CIT_KEY_F6,
+    CIT_KEY_F7,
+    CIT_KEY_F8,
+    CIT_KEY_F9,
+    CIT_KEY_F10,
+    CIT_KEY_F11,
+    CIT_KEY_F12,
+
+    CIT_KEY_A, // = 97,
+    CIT_KEY_B, // = 98,
+    CIT_KEY_C, // = 99,
+    CIT_KEY_D, // = 100,
+    CIT_KEY_E, // = 101,
+    CIT_KEY_F, // = 102,
+    CIT_KEY_G, // = 103,
+    CIT_KEY_H, // = 104,
+    CIT_KEY_I, // = 105,
+    CIT_KEY_J, // = 106,
+    CIT_KEY_K, // = 107,
+    CIT_KEY_L, // = 108,
+    CIT_KEY_M, // = 109,
+    CIT_KEY_N, // = 110,
+    CIT_KEY_O, // = 111,
+    CIT_KEY_P, // = 112,
+    CIT_KEY_Q, // = 113,
+    CIT_KEY_R, // = 114,
+    CIT_KEY_S, // = 115,
+    CIT_KEY_T, // = 116,
+    CIT_KEY_U, // = 117,
+    CIT_KEY_V, // = 118,
+    CIT_KEY_W, // = 119,
+    CIT_KEY_X, // = 120,
+    CIT_KEY_Y, // = 121,
+    CIT_KEY_Z, // = 122,
+
+    CIT_KEY_ESC,
+    CIT_KEY_TAB,
+    CIT_KEY_BACKSPACE,
+    CIT_KEY_ENTER,
+
+    CIT_KEY_ARROW_UP,
+    CIT_KEY_ARROW_LEFT,
+    CIT_KEY_ARROW_DOWN,
+    CIT_KEY_ARROW_RIGHT,
+
+    CIT_KEY_CAPS_LOCK,
+    CIT_KEY_SHIFT_L,
+    CIT_KEY_SHIFT_R,
+    CIT_KEY_CTRL_L,
+    CIT_KEY_CTRL_R,
+    CIT_KEY_ALT_L,
+    CIT_KEY_ALT_R,
+    CIT_KEY_SUPER_L,
+    CIT_KEY_SUPER_R,
+
+    CIT_KEY_COUNT,
+} cit_key;
+
 typedef struct cit_event cit_event;
 struct cit_event {
     cit_event* next;
@@ -74,7 +151,7 @@ struct cit_event {
     cit_window* window;
 
     cit_mod mod;
-    // cit_key key;
+    cit_key key;
     u32 scancode;
     u32 codepoint;
     cit_mouse_button button;

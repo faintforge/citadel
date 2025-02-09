@@ -7,6 +7,14 @@ cit_state _cit_state = {0};
 
 b8 cit_init(cit_config config) {
     switch (config.backend) {
+        case CIT_GFX_BACKEND_NONE:
+            _cit_state = (cit_state) {
+                .gfx_init = cit_dummy_init,
+                .gfx_terminate = cit_dummy_terminate,
+                .window_create = cit_os_dummy_window_create,
+                .window_destroy = cit_os_dummy_window_destroy,
+            };
+            break;
         case CIT_GFX_BACKEND_OPENGL:
             _cit_state = (cit_state) {
                 .gfx_init = cit_os_gl_init,
@@ -55,3 +63,13 @@ cit_window* cit_window_create(cit_window_desc desc) {
 void cit_window_destroy(cit_window* window) {
     _cit_state.window_destroy(window);
 }
+
+SP_Ivec2 cit_window_get_size(const cit_window* window) {
+    return window->size;
+}
+
+b8 cit_dummy_init(cit_config config) {
+    (void) config;
+    return true;
+}
+void cit_dummy_terminate(void) {}

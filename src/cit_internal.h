@@ -27,6 +27,12 @@ extern cit_state _cit_state;
 extern b8 cit_os_init(void);
 extern void cit_os_terminate(void);
 
+// Dummy
+extern b8 cit_dummy_init(cit_config config);
+extern void cit_dummy_terminate(void);
+extern cit_window* cit_os_dummy_window_create(cit_window_desc desc);
+extern void cit_os_dummy_window_destroy(cit_window* window);
+
 // OpenGL
 extern b8 cit_os_gl_init(cit_config config);
 extern void cit_os_gl_terminate(void);

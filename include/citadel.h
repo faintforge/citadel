@@ -4,6 +4,7 @@
 #include "spire.h"
 
 typedef enum cit_gfx_backend {
+    CIT_GFX_BACKEND_NONE,
     CIT_GFX_BACKEND_OPENGL,
     CIT_GFX_BACKEND_VULKAN,
 } cit_gfx_backend;
@@ -35,6 +36,7 @@ typedef struct cit_window cit_window;
 
 extern cit_window* cit_window_create(cit_window_desc desc);
 extern void        cit_window_destroy(cit_window* window);
+extern SP_Ivec2    cit_window_get_size(const cit_window* window);
 
 // Events
 

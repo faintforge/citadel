@@ -570,4 +570,16 @@ void internal_linux_window_destroy(linux_window* window) {
     xcb_destroy_window(linux_state.conn, window->handle);
 }
 
+Display* cit_native_linux_get_x11_display(void) {
+    return linux_state.xdpy;
+}
+
+xcb_connection_t* cit_native_linux_get_xcb_connection(void) {
+    return linux_state.conn;
+}
+
+xcb_window_t cit_native_linux_get_xcb_window_handle(const cit_window* window) {
+    return ((linux_window*) window->internal)->handle;
+}
+
 #endif // SP_OS_LINUX

@@ -164,4 +164,16 @@ struct cit_event {
 
 extern cit_event* cit_poll_events(void);
 
+// -- Native API ---------------------------------------------------------------
+
+#ifdef CIT_NATIVE_EXPOSE_LINUX
+#include <X11/Xlib.h>
+#include <xcb/xcb.h>
+
+extern Display* cit_native_linux_get_x11_display(void);
+extern xcb_connection_t* cit_native_linux_get_xcb_connection(void);
+extern xcb_window_t cit_native_linux_get_xcb_window_handle(const cit_window* window);
+
+#endif // CIT_NATIVE_EXPOSE_XCB
+
 #endif // CITADEL_H_

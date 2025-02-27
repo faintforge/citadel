@@ -61,7 +61,7 @@ typedef enum cit_mod {
     CIT_MOD_ALT_R = 1 << 3,
 } cit_mod;
 
-typedef enum cit_mouse_button : i8 {
+typedef enum cit_mouse_button {
     CIT_MOUSE_BUTTON_LEFT,
     CIT_MOUSE_BUTTON_RIGHT,
     CIT_MOUSE_BUTTON_MIDDLE,
@@ -163,6 +163,13 @@ struct cit_event {
 };
 
 extern cit_event* cit_poll_events(void);
+
+// Graphics
+
+typedef void cit_surface;
+
+extern cit_surface* cit_surface_create(cit_window* window);
+extern void cit_surface_destroy(cit_surface* surface);
 
 // -- Native API ---------------------------------------------------------------
 

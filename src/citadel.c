@@ -11,24 +11,18 @@ b8 cit_init(cit_config config) {
             _cit_state = (cit_state) {
                 .gfx_init = cit_dummy_init,
                 .gfx_terminate = cit_dummy_terminate,
-                .window_create = cit_os_dummy_window_create,
-                .window_destroy = cit_os_dummy_window_destroy,
             };
             break;
         case CIT_GFX_BACKEND_OPENGL:
             _cit_state = (cit_state) {
                 .gfx_init = cit_os_gl_init,
                 .gfx_terminate = cit_os_gl_terminate,
-                .window_create = cit_os_gl_window_create,
-                .window_destroy = cit_os_gl_window_destroy,
             };
             break;
         case CIT_GFX_BACKEND_VULKAN:
             _cit_state = (cit_state) {
                 .gfx_init = cit_vk_init,
                 .gfx_terminate = cit_vk_terminate,
-                .window_create = cit_os_vk_window_create,
-                .window_destroy = cit_os_vk_window_destroy,
             };
             sp_assert(false, "Vulkan backend currently not supported!");
             break;
@@ -53,23 +47,9 @@ void cit_terminate(void) {
     sp_arena_destroy(_cit_state.arena);
 }
 
-cit_window* cit_window_create(cit_window_desc desc) {
-    cit_window* window = _cit_state.window_create(desc);
-    window->next = _cit_state.window_stack;
-    _cit_state.window_stack = window;
-    return window;
-}
-
-void cit_window_destroy(cit_window* window) {
-    _cit_state.window_destroy(window);
-}
-
-SP_Ivec2 cit_window_get_size(const cit_window* window) {
-    return window->size;
-}
-
 b8 cit_dummy_init(cit_config config) {
     (void) config;
     return true;
 }
+
 void cit_dummy_terminate(void) {}

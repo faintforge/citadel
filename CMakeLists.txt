@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.31)
 project(citadel)
 
+add_subdirectory("spire/")
+
 file(GLOB_RECURSE SOURCE CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 add_library(${PROJECT_NAME} ${SOURCE})
 
@@ -16,18 +18,17 @@ set_target_properties(${PROJECT_NAME}
     POSITION_INDEPENDENT_CODE true
     C_STANDARD_REQUIRED true
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
-    COMPILE_FLAGS "-Wall -Wextra -Wno-builtin-macro-redefined"
+    COMPILE_FLAGS "-Wall -Wextra -Wno-builtin-macro-redefined -Wpedantic"
 )
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/"
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spire/"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/"
 )
 
-target_link_libraries(${PROJECT_NAME} m)
+target_link_libraries(${PROJECT_NAME} spire)
 if (UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm xcb-keysyms X11 X11-xcb EGL)
+    target_link_libraries(${PROJECT_NAME} xcb xcb-icccm xcb-keysyms X11 X11-xcb EGL m)
 endif ()
 
 

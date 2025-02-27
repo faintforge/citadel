@@ -10,22 +10,19 @@ struct cit_linux_state {
     Display* xdpy;
     xcb_connection_t* conn;
     XIM xim;
+    cit_window* window_stack;
+    xcb_screen_t* screen;
 };
 // Defined in linux.c
 extern cit_linux_state linux_state;
 
-typedef struct linux_window linux_window;
-struct linux_window {
+struct cit_window {
+    cit_window* next;
+    SP_Ivec2 size;
     xcb_window_t handle;
     xcb_atom_t destroy_atom;
     void* internal;
-    // X Input Context
     XIC xic;
 };
-
-
-#define INTERNAL_LINUX_VISUAL_ID_DONT_CARE (~0u)
-extern linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t visual_id);
-extern void internal_linux_window_destroy(linux_window* window);
 
 #endif // LINUX_INTERNAL_H_

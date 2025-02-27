@@ -39,6 +39,9 @@ b8 cit_os_init(void) {
         return false;
     }
 
+    const xcb_setup_t* setup = xcb_get_setup(linux_state.conn);
+    linux_state.screen = xcb_setup_roots_iterator(setup).data;
+
     return true;
 }
 
@@ -48,11 +51,9 @@ void cit_os_terminate(void) {
 }
 
 static cit_window* get_window_from_event(xcb_window_t event_window) {
-    cit_window* window = _cit_state.window_stack;
-    linux_window* lwin;
+    cit_window* window = linux_state.window_stack;
     while (window != NULL) {
-        lwin = window->internal;
-        if (lwin->handle == event_window) {
+        if (window->handle == event_window) {
             return window;
         }
         window = window->next;
@@ -77,15 +78,16 @@ static u32 utf8_to_utf32(char* buffer) {
     // Unicode
     // https://en.wikipedia.org/wiki/UTF-8#Description
     u8 first_byte_mask[3] = {
-        0b00011111, // 2 bytes
-        0b00001111, // 3 bytes
-        0b00000111, // 4 bytes
+        31, // 0b00011111   2 bytes
+        15, // 0b00001111   3 bytes
+        7,  // 0b00000111   4 bytes
     };
     u32 codepoint = 0;
     u8 first_byte_bits = buffer[0] & first_byte_mask[byte_count - 2];
     codepoint |= first_byte_bits << 6 * (byte_count - 1);
     for (i8 i = byte_count - 1; i > 0; i--) {
-        codepoint |= (u32) (buffer[i] & 0b00111111) << (6 * (i - 1));
+        u32 mask = 63; // 0b00111111
+        codepoint |= (u32) (buffer[i] & mask) << (6 * (i - 1));
     }
 
     return codepoint;
@@ -258,7 +260,6 @@ static cit_event handle_raw_key_event(cit_window* win, XKeyEvent* ev) {
 }
 
 static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
-    linux_window* lwin = win->internal;
     cit_event cit_ev = {
         .window = win,
         .scancode = ev->keycode,
@@ -268,7 +269,7 @@ static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
     char buffer[32];
     KeySym keysym;
     Status status;
-    i32 len = Xutf8LookupString(lwin->xic, ev, buffer, sizeof(buffer) - 1, &keysym, &status);
+    i32 len = Xutf8LookupString(win->xic, ev, buffer, sizeof(buffer) - 1, &keysym, &status);
     if (status == XBufferOverflow) {
         sp_warn("Buffer too small for character input!");
         return cit_ev;
@@ -278,7 +279,6 @@ static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
         return cit_ev;
     }
 
-    // TODO: Translate keysym
     cit_ev.key = translate_keysym(keysym);
 
     // Event type
@@ -325,8 +325,7 @@ cit_event* cit_poll_events(void) {
             case XCB_CLIENT_MESSAGE: {
                 xcb_client_message_event_t* e = (xcb_client_message_event_t*) ev;
                 cit_window* window = get_window_from_event(e->window);
-                linux_window* lwin = window->internal;
-                if (e->data.data32[0] == lwin->destroy_atom) {
+                if (e->data.data32[0] == window->destroy_atom) {
                     push_event(&first_event, &last_event, (cit_event) {
                             .type = CIT_EVENT_TYPE_WINDOW_CLOSE,
                             .window = window,
@@ -351,12 +350,11 @@ cit_event* cit_poll_events(void) {
             case XCB_KEY_PRESS: {
                 xcb_key_press_event_t* e = (xcb_key_press_event_t*) ev;
                 cit_window* win = get_window_from_event(e->event);
-                linux_window* lwin = win->internal;
 
                 XKeyEvent xkey = {
                     .type        = e->response_type == XCB_KEY_PRESS ? KeyPress : KeyRelease,
                     .display     = linux_state.xdpy,
-                    .window      = lwin->handle,
+                    .window      = win->handle,
                     .root        = e->root,
                     .subwindow   = None,
                     .time        = e->time,
@@ -406,7 +404,7 @@ cit_event* cit_poll_events(void) {
                     default:
                         break;
                 }
-                if (btn == -1 && scroll == 0) {
+                if (btn == (cit_mouse_button) -1 && scroll == 0) {
                     break;
                 }
 
@@ -470,14 +468,8 @@ cit_event* cit_poll_events(void) {
     return first_event;
 }
 
-linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t visual_id) {
-    linux_window* lwin = sp_arena_push_no_zero(_cit_state.arena, sizeof(linux_window));
-
-    const xcb_setup_t* setup = xcb_get_setup(linux_state.conn);
-    xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
-    if (visual_id == INTERNAL_LINUX_VISUAL_ID_DONT_CARE) {
-        visual_id = screen->root_visual;
-    }
+cit_window* cit_window_create(cit_window_desc desc) {
+    cit_window* window = sp_arena_push_no_zero(_cit_state.arena, sizeof(cit_window));
 
     u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     u32 events = XCB_EVENT_MASK_STRUCTURE_NOTIFY |
@@ -489,24 +481,25 @@ linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t 
             XCB_EVENT_MASK_BUTTON_RELEASE |
             XCB_EVENT_MASK_POINTER_MOTION;
     u32 values[] = {
-        screen->black_pixel,
+        linux_state.screen->black_pixel,
         events,
     };
-    lwin->handle = xcb_generate_id(linux_state.conn);
+    window->handle = xcb_generate_id(linux_state.conn);
     xcb_create_window(
             linux_state.conn,
             XCB_COPY_FROM_PARENT,
-            lwin->handle,
-            screen->root,
+            window->handle,
+            linux_state.screen->root,
             0, 0,
             desc.size.x, desc.size.y,
             0,
             XCB_WINDOW_CLASS_INPUT_OUTPUT,
-            visual_id,
+            linux_state.screen->root_visual,
             mask, values);
-    if (lwin->handle == XCB_WINDOW_NONE) {
+    if (window->handle == XCB_WINDOW_NONE) {
         return NULL;
     }
+    window->size = desc.size;
 
     // Set window properties
     // https://xcb.freedesktop.org/windowcontextandmanipulation/
@@ -514,7 +507,7 @@ linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t 
     // Title
     xcb_change_property(linux_state.conn,
             XCB_PROP_MODE_REPLACE,
-            lwin->handle,
+            window->handle,
             XCB_ATOM_WM_NAME,
             XCB_ATOM_STRING,
             8,
@@ -527,21 +520,21 @@ linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t 
         xcb_icccm_size_hints_set_min_size(&hints, desc.size.x, desc.size.y);
         xcb_icccm_size_hints_set_max_size(&hints, desc.size.x, desc.size.y);
         xcb_icccm_set_wm_size_hints(linux_state.conn,
-                lwin->handle,
+                window->handle,
                 XCB_ATOM_WM_NORMAL_HINTS,
                 &hints);
     }
 
     // Create input context
-    lwin->xic = XCreateIC(linux_state.xim,
+    window->xic = XCreateIC(linux_state.xim,
             XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
-            XNClientWindow, lwin->handle,
-            XNFocusWindow, lwin->handle,
+            XNClientWindow, window->handle,
+            XNFocusWindow, window->handle,
             NULL);
-    if (lwin->xic == NULL) {
+    if (window->xic == NULL) {
         return NULL;
     }
-    XSetICFocus(lwin->xic);
+    XSetICFocus(window->xic);
 
     // Destroy window event
     xcb_intern_atom_cookie_t protocol_cookie = xcb_intern_atom(linux_state.conn, true, 12, "WM_PROTOCOLS");
@@ -550,24 +543,31 @@ linux_window* internal_linux_window_create(cit_window_desc desc, xcb_visualid_t 
     xcb_intern_atom_reply_t* destroy_reply = xcb_intern_atom_reply(linux_state.conn, destroy_cookie, NULL);
     xcb_change_property(linux_state.conn,
             XCB_PROP_MODE_REPLACE,
-            lwin->handle,
+            window->handle,
             protocol_reply->atom,
             XCB_ATOM_ATOM,
             32,
             1,
             &destroy_reply->atom);
-    lwin->destroy_atom = destroy_reply->atom;
+    window->destroy_atom = destroy_reply->atom;
 
     // Show the window
-    xcb_map_window(linux_state.conn, lwin->handle);
+    xcb_map_window(linux_state.conn, window->handle);
     xcb_flush(linux_state.conn);
 
-    return lwin;
+    window->next = linux_state.window_stack;
+    linux_state.window_stack = window;
+
+    return window;
 }
 
-void internal_linux_window_destroy(linux_window* window) {
+void cit_window_destroy(cit_window* window) {
     XDestroyIC(window->xic);
     xcb_destroy_window(linux_state.conn, window->handle);
+}
+
+SP_Ivec2 cit_window_get_size(const cit_window* window) {
+    return window->size;
 }
 
 Display* cit_native_linux_get_x11_display(void) {
@@ -579,7 +579,7 @@ xcb_connection_t* cit_native_linux_get_xcb_connection(void) {
 }
 
 xcb_window_t cit_native_linux_get_xcb_window_handle(const cit_window* window) {
-    return ((linux_window*) window->internal)->handle;
+    return window->handle;
 }
 
 #endif // SP_OS_LINUX

@@ -1,8 +1,8 @@
 #include "spire.h"
 #ifdef SP_OS_LINUX
 
-#include "cit_internal.h"
-#include "os/linux_internal.h"
+#include "../../cit_internal.h"
+#include "../../os/linux_internal.h"
 
 #include <EGL/egl.h>
 #include <GL/gl.h>
@@ -178,7 +178,7 @@ void cit_os_gl_terminate(void) {
     eglTerminate(gl_state.dpy);
 }
 
-cit_surface* cit_surface_create(cit_window* window) {
+cit_surface* cit_os_gl_surface_create(cit_window* window) {
     linux_gl_surface* surface = sp_arena_push_no_zero(_cit_state.arena, sizeof(linux_gl_surface));
 
     EGLSurface egl_surface = eglCreateWindowSurface(gl_state.dpy,
@@ -206,8 +206,15 @@ cit_surface* cit_surface_create(cit_window* window) {
     return (cit_surface*) surface;
 }
 
-void cit_surface_destroy(cit_surface* surface) {
+void cit_os_gl_surface_destroy(cit_surface* surface) {
     eglDestroySurface(gl_state.dpy, ((linux_gl_surface*) surface)->surface);
 }
+
+// void super_illegal_swap_buffers_function(cit_surface* surface) {
+//     linux_gl_surface* lsurf = surface;
+//     eglSwapInterval(gl_state.dpy, 0);
+//     eglMakeCurrent(gl_state.dpy, lsurf->surface, lsurf->surface, gl_state.ctx);
+//     eglSwapBuffers(gl_state.dpy, lsurf->surface);
+// }
 
 #endif // SP_OS_LINUX

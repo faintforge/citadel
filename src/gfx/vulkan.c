@@ -11,13 +11,13 @@ void cit_vk_terminate(void) {
     sp_assert(false, "%s not implemented!", __func__);
 }
 
-cit_window* cit_os_vk_window_create(cit_window_desc desc) {
-    (void) desc;
+cit_surface* cit_vk_surface_create(cit_window* window) {
+    (void) window;
     sp_assert(false, "%s not implemented!", __func__);
     return NULL;
 }
 
-void cit_os_vk_window_destroy(cit_window* window) {
-    (void) window;
+void cit_vk_surface_destroy(cit_surface* surface) {
+    (void) surface;
     sp_assert(false, "%s not implemented!", __func__);
 }

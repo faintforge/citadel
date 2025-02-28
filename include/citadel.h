@@ -17,7 +17,9 @@ struct cit_config {
         u32 version_minor;
         b8 es;
     } gl;
-    struct {} vk;
+    struct {
+        u8 _phantom;
+    } vk;
 };
 
 extern b8   cit_init(cit_config config);

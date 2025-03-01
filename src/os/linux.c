@@ -233,6 +233,15 @@ static cit_key translate_keysym(KeySym keysym) {
     }
 }
 
+static cit_mod state_to_cit_mod(u32 state) {
+    cit_mod mod = CIT_MOD_NONE;
+    if (state & XCB_MOD_MASK_SHIFT)   { mod |= CIT_MOD_SHIFT; }
+    if (state & XCB_MOD_MASK_CONTROL) { mod |= CIT_MOD_CRTL; }
+    if (state & XCB_MOD_MASK_1)       { mod |= CIT_MOD_ALT_L; }
+    if (state & XCB_MOD_MASK_5)       { mod |= CIT_MOD_ALT_R; }
+    return mod;
+}
+
 static cit_event handle_raw_key_event(cit_window* win, XKeyEvent* ev) {
     cit_event cit_ev = {
         .window = win,
@@ -249,12 +258,7 @@ static cit_event handle_raw_key_event(cit_window* win, XKeyEvent* ev) {
     cit_ev.scancode = ev->keycode;
 
     // Mod
-    cit_mod mod = CIT_MOD_NONE;
-    if (ev->state & XCB_MOD_MASK_SHIFT)   { mod |= CIT_MOD_SHIFT; }
-    if (ev->state & XCB_MOD_MASK_CONTROL) { mod |= CIT_MOD_CRTL; }
-    if (ev->state & XCB_MOD_MASK_1)       { mod |= CIT_MOD_ALT_L; }
-    if (ev->state & XCB_MOD_MASK_5)       { mod |= CIT_MOD_ALT_R; }
-    cit_ev.mod = mod;
+    cit_ev.mod = state_to_cit_mod(ev->state);
 
     return cit_ev;
 }
@@ -292,12 +296,7 @@ static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
     cit_ev.type = CIT_EVENT_TYPE_TEXT;
 
     // Mod
-    cit_mod mod = CIT_MOD_NONE;
-    if (ev->state & XCB_MOD_MASK_SHIFT)   { mod |= CIT_MOD_SHIFT; }
-    if (ev->state & XCB_MOD_MASK_CONTROL) { mod |= CIT_MOD_CRTL; }
-    if (ev->state & XCB_MOD_MASK_1)       { mod |= CIT_MOD_ALT_L; }
-    if (ev->state & XCB_MOD_MASK_5)       { mod |= CIT_MOD_ALT_R; }
-    cit_ev.mod = mod;
+    cit_ev.mod = state_to_cit_mod(ev->state);
 
     return cit_ev;
 }
@@ -420,6 +419,7 @@ cit_event* cit_poll_events(void) {
                             .window = win,
                             .position = sp_iv2(e->event_x, e->event_y),
                             .scroll = scroll,
+                            .mod = state_to_cit_mod(e->state),
                         });
                     break;
                 }
@@ -431,6 +431,7 @@ cit_event* cit_poll_events(void) {
                         .window = win,
                         .position = sp_iv2(e->event_x, e->event_y),
                         .button = btn,
+                        .mod = state_to_cit_mod(e->state),
                     });
             } break;
 
@@ -441,6 +442,7 @@ cit_event* cit_poll_events(void) {
                         .type = CIT_EVENT_TYPE_MOUSE_MOVE,
                         .window = win,
                         .position = sp_iv2(e->event_x, e->event_y),
+                        .mod = state_to_cit_mod(e->state),
                     });
             } break;
 

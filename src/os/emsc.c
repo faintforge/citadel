@@ -215,11 +215,110 @@ static bool text_callback(int eventType, const EmscriptenKeyboardEvent *keyEvent
         return true;
     }
 
+    cit_mod mod = CIT_MOD_NONE;
+    if (keyEvent->ctrlKey)  { mod |= CIT_MOD_CRTL; }
+    if (keyEvent->altKey)   { mod |= CIT_MOD_ALT_L | CIT_MOD_ALT_R; }
+    if (keyEvent->shiftKey) { mod |= CIT_MOD_SHIFT; }
+
     push_event((cit_event) {
             .type = CIT_EVENT_TYPE_TEXT,
             .window = window,
             .key = translate_keycode(sp_cstr(keyEvent->code)),
             .codepoint = keyEvent->key[0],
+            .mod = mod,
+        });
+
+    return true;
+}
+
+static bool mouse_move_callback(int eventType, const EmscriptenMouseEvent *mouseEvent __attribute__((nonnull)), void *userData) {
+    (void) eventType;
+    cit_window* window = userData;
+    cit_mod mod = CIT_MOD_NONE;
+    if (mouseEvent->ctrlKey)  { mod |= CIT_MOD_CRTL; }
+    if (mouseEvent->altKey)   { mod |= CIT_MOD_ALT_L | CIT_MOD_ALT_R; }
+    if (mouseEvent->shiftKey) { mod |= CIT_MOD_SHIFT; }
+    push_event((cit_event) {
+            .type = CIT_EVENT_TYPE_MOUSE_MOVE,
+            .window = window,
+            .position = sp_iv2(mouseEvent->targetX, mouseEvent->targetY),
+            .mod = mod,
+        });
+    return true;
+}
+
+static bool mouse_button_callback(int eventType, const EmscriptenMouseEvent *mouseEvent __attribute__((nonnull)), void *userData) {
+    cit_window* window = userData;
+    cit_event_type type = CIT_EVENT_TYPE_NONE;
+    switch (eventType) {
+        case EMSCRIPTEN_EVENT_MOUSEDOWN:
+            type = CIT_EVENT_TYPE_MOUSE_BUTTON_PRESS;
+            break;
+        case EMSCRIPTEN_EVENT_MOUSEUP:
+            type = CIT_EVENT_TYPE_MOUSE_BUTTON_RELEASE;
+            break;
+        default:
+            sp_debug("here");
+            break;
+    }
+
+    cit_mouse_button button = CIT_MOUSE_BUTTON_LEFT;
+    switch (mouseEvent->button) {
+        case 0:
+            button = CIT_MOUSE_BUTTON_LEFT;
+            break;
+        case 1:
+            button = CIT_MOUSE_BUTTON_MIDDLE;
+            break;
+        case 2:
+            button = CIT_MOUSE_BUTTON_RIGHT;
+            break;
+    }
+
+    cit_mod mod = CIT_MOD_NONE;
+    if (mouseEvent->ctrlKey)  { mod |= CIT_MOD_CRTL; }
+    if (mouseEvent->altKey)   { mod |= CIT_MOD_ALT_L | CIT_MOD_ALT_R; }
+    if (mouseEvent->shiftKey) { mod |= CIT_MOD_SHIFT; }
+
+    push_event((cit_event) {
+            .type = type,
+            .window = window,
+            .mod = mod,
+            .position = sp_iv2(mouseEvent->targetX, mouseEvent->targetY),
+            .button = button,
+        });
+
+    return false;
+}
+
+// static bool scroll_callback(int eventType, const EmscriptenUiEvent *uiEvent __attribute__((nonnull)), void *userData) {
+//     (void) eventType;
+//     sp_debug("Here");
+//     cit_window* window = userData;
+//     push_event((cit_event) {
+//             .type = CIT_EVENT_TYPE_MOUSE_SCROLL,
+//             .window = window,
+//             .scroll = uiEvent->scrollTop,
+//         });
+//     return true;
+// }
+
+static bool mouse_scroll_callback(int eventType, const EmscriptenWheelEvent *wheelEvent __attribute__((nonnull)), void *userData) {
+    (void) eventType;
+    cit_window* window = userData;
+    const EmscriptenMouseEvent* mouseEvent = &wheelEvent->mouse;
+
+    cit_mod mod = CIT_MOD_NONE;
+    if (mouseEvent->ctrlKey)  { mod |= CIT_MOD_CRTL; }
+    if (mouseEvent->altKey)   { mod |= CIT_MOD_ALT_L | CIT_MOD_ALT_R; }
+    if (mouseEvent->shiftKey) { mod |= CIT_MOD_SHIFT; }
+
+    push_event((cit_event) {
+            .type = CIT_EVENT_TYPE_MOUSE_SCROLL,
+            .window = window,
+            .scroll = wheelEvent->deltaY > 0 ? -1 : 1,
+            .mod = mod,
+            .position = sp_iv2(mouseEvent->targetX, mouseEvent->targetY),
         });
 
     return true;
@@ -241,49 +340,17 @@ cit_window* cit_window_create(cit_window_desc desc) {
     const char* id = sp_str_to_cstr(scratch.arena, id_str);
 
     emscripten_set_resize_callback(id, window, true, resize_callback);
+
     emscripten_set_keyup_callback(id, window, true, key_callback);
     emscripten_set_keydown_callback(id, window, true, key_callback);
     emscripten_set_keydown_callback(id, window, true, text_callback);
-    emscripten_set_canvas_element_size(id, desc.size.x, desc.size.y);
 
-    // EM_ASM({
-    //     let canvas = document.getElementById(id);
-    //     console.log(id);
-    //     let input = document.createElement("input");
-    //     input.style.position = "absolute";
-    //     input.style.top = "0px";
-    //     input.style.left = "0px";
-    //     input.style.opacity = "0";
-    //     input.style.pointerEvents = "none";
-    //     document.body.appendChild(input);
-    //
-    //     let composing = false;
-    //     let lastFocus = document.activeElement;
-    //
-    //     input.addEventListener("compositionstart", () => { composing = true; });
-    //     input.addEventListener("compositionend", () => { composing = false; });
-    //
-    //     input.addEventListener("input", (ev) => {
-    //         if (!composing) {
-    //             let value = ev.target.value;
-    //             ev.target.value = "";
-    //             if (value.length > 0) {
-    //                 console.log(value);
-    //             }
-    //         }
-    //         lastFocus.focus();
-    //     });
-    //
-    //     document.addEventListener("keydown", (ev) => {
-    //         if (ev.key === "Backspace") {
-    //             console.log("Backspace");
-    //         } else if (ev.key === "Enter") {
-    //             console.log("Enter");
-    //         }
-    //         lastFocus = document.activeElement;
-    //         input.focus();
-    //     });
-    // }, id);
+    emscripten_set_mousemove_callback(id, window, true, mouse_move_callback);
+    emscripten_set_mouseup_callback(id, window, true, mouse_button_callback);
+    emscripten_set_mousedown_callback(id, window, true, mouse_button_callback);
+    emscripten_set_wheel_callback(id, window, true, mouse_scroll_callback);
+
+    emscripten_set_canvas_element_size(id, desc.size.x, desc.size.y);
 
     sp_scratch_end(scratch);
 

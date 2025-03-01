@@ -279,6 +279,11 @@ static cit_event handle_text_event(cit_window* win, XKeyEvent* ev) {
         return cit_ev;
     }
 
+    // Don't handle keys such as Shift, arrow keys, etc.
+    if (len <= 0) {
+        return cit_ev;
+    }
+
     cit_ev.key = translate_keysym(keysym);
 
     // Event type

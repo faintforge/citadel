@@ -1,6 +1,9 @@
 #ifndef LINUX_INTERNAL_H_
 #define LINUX_INTERNAL_H_
 
+#include "spire.h"
+#ifdef SP_OS_LINUX
+
 #include "citadel.h"
 #include <X11/Xlib.h>
 #include <xcb/xcb.h>
@@ -25,4 +28,5 @@ struct cit_window {
     XIC xic;
 };
 
+#endif // SP_OS_LINUX
 #endif // LINUX_INTERNAL_H_

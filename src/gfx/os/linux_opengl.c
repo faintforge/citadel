@@ -39,6 +39,7 @@ b8 cit_os_gl_init(cit_config config) {
     i32 egl_minor;
     if (!eglInitialize(dpy, &egl_major, &egl_minor)) {
         sp_error("EGL failed to initialize!");
+        sp_error("EGL error: 0x%04X", eglGetError());
         return false;
     }
     sp_debug("EGL version: %d.%d", egl_major, egl_minor);
@@ -210,11 +211,11 @@ void cit_os_gl_surface_destroy(cit_surface* surface) {
     eglDestroySurface(gl_state.dpy, ((linux_gl_surface*) surface)->surface);
 }
 
-// void super_illegal_swap_buffers_function(cit_surface* surface) {
-//     linux_gl_surface* lsurf = surface;
-//     eglSwapInterval(gl_state.dpy, 0);
-//     eglMakeCurrent(gl_state.dpy, lsurf->surface, lsurf->surface, gl_state.ctx);
-//     eglSwapBuffers(gl_state.dpy, lsurf->surface);
-// }
+void super_illegal_swap_buffers_function(cit_surface* surface) {
+    linux_gl_surface* lsurf = surface;
+    eglSwapInterval(gl_state.dpy, 0);
+    eglMakeCurrent(gl_state.dpy, lsurf->surface, lsurf->surface, gl_state.ctx);
+    eglSwapBuffers(gl_state.dpy, lsurf->surface);
+}
 
 #endif // SP_OS_LINUX

@@ -27,19 +27,20 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} spire)
-if (UNIX AND NOT APPLE)
+
+# Linux
+if (UNIX AND NOT (EMSCRIPTEN OR APPLE))
     target_link_libraries(${PROJECT_NAME} xcb xcb-icccm xcb-keysyms X11 X11-xcb EGL m)
 endif ()
 
-
 if (EMSCRIPTEN)
     execute_process(COMMAND emcc --cflags OUTPUT_VARIABLE EM_CFLAGS)
-    get_target_property(CFLAGS ${CMAKE_PROJECT_NAME} COMPILE_FLAGS)
+    get_target_property(CFLAGS ${PROJECT_NAME} COMPILE_FLAGS)
     set_target_properties(${PROJECT_NAME}
         PROPERTIES
         COMPILE_FLAGS "${CFLAGS} ${EM_CFLAGS}"
     )
-    target_link_options(${CMAKE_PROJECT_NAME}
+    target_link_options(${PROJECT_NAME}
         PRIVATE "-sALLOW_MEMORY_GROWTH=1"
     )
     set(CMAKE_EXECUTABLE_SUFFIX ".html")

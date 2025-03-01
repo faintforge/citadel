@@ -15,8 +15,9 @@ endforeach()
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
     C_STANDARD "99"
-    POSITION_INDEPENDENT_CODE true
     C_STANDARD_REQUIRED true
+    C_EXTENSIONS false
+    POSITION_INDEPENDENT_CODE true
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
     COMPILE_FLAGS "-Wall -Wextra -Wno-builtin-macro-redefined -Wpedantic"
 )
@@ -42,6 +43,7 @@ if (EMSCRIPTEN)
     )
     target_link_options(${PROJECT_NAME}
         PRIVATE "-sALLOW_MEMORY_GROWTH=1"
+        PUBLIC "-sASYNCIFY"
     )
     set(CMAKE_EXECUTABLE_SUFFIX ".html")
 endif ()
